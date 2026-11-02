@@ -64,6 +64,20 @@ box-shadow:inset 3px 4px 9px #e3c4a45c,inset -4px -4px 9px #4b342b8c,2px 5px 8px
 const cfg={apiKey:"AIzaSyC-1CH2jaOv6rAkeLfLSzohc7e_10mzc4M",authDomain:"delenie-real.firebaseapp.com",databaseURL:"https://delenie-real-default-rtdb.firebaseio.com",projectId:"delenie-real",storageBucket:"delenie-real.firebasestorage.app",messagingSenderId:"52837234105",appId:"1:52837234105:web:4fb7e3c890d0c6bc78b268"};
 const $=id=>document.getElementById(id),palette={green:"#aa4430",yellow:"#b76554",red:"#96705a"},labels={green:"Прочный кирпич — всё понял и успел",yellow:"Треснувший кирпич — остались вопросы или не успел",red:"Глиняная заготовка — пока мало понял и сделал"};
 let db;try{firebase.initializeApp(cfg);db=firebase.database()}catch(e){console.error(e)}
+
+// Material texture is drawn as a real SVG surface, not a solid CSS color.
+// Preserve legacy Firebase answers (green/yellow/red), but render fired/cracked/raw clay.
+const brickTextures={
+green:`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="160" viewBox="0 0 400 160"><defs><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".035 .09" numOctaves="4" seed="16" result="grain"/><feColorMatrix in="grain" type="saturate" values="0" result="mono"/><feBlend in="SourceGraphic" in2="mono" mode="multiply"/></filter><linearGradient id="b" x2="0" y2="1"><stop stop-color="#d97b58"/><stop offset=".19" stop-color="#b34a32"/><stop offset=".75" stop-color="#a43e2b"/><stop offset="1" stop-color="#6b261d"/></linearGradient></defs><rect width="400" height="160" fill="url(#b)"/><g filter="url(#n)" opacity=".25"><rect width="400" height="160" fill="#bb6a4b"/></g><path d="M4 8Q200 2 397 8" stroke="#ffbd936b" stroke-width="6" fill="none"/><path d="M10 148Q200 154 388 147" stroke="#38170f88" stroke-width="8" fill="none"/><g fill="#733023" opacity=".27"><circle cx="53" cy="39" r="2"/><circle cx="103" cy="81" r="1.7"/><circle cx="192" cy="58" r="2"/><circle cx="285" cy="123" r="1.6"/></g></svg>`,
+yellow:`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="160" viewBox="0 0 400 160"><defs><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".075" numOctaves="4" seed="13"/></filter><linearGradient id="b" x2="0" y2="1"><stop stop-color="#d9967c"/><stop offset=".53" stop-color="#b96350"/><stop offset="1" stop-color="#834335"/></linearGradient></defs><rect width="400" height="160" fill="url(#b)"/><rect width="400" height="160" fill="#6e493f" filter="url(#n)" opacity=".17"/><path d="M65 2L81 32 71 54 118 69 135 99 119 124 147 158 M258 0L247 25 281 48 276 69 298 83 290 112 330 128 320 160" fill="none" stroke="#452722" stroke-width="6" stroke-linejoin="round"/><path d="M65 2L81 32 71 54 118 69 135 99 119 124 147 158 M258 0L247 25 281 48 276 69 298 83 290 112 330 128 320 160" fill="none" stroke="#e8b29b" stroke-width="2" stroke-linejoin="round" transform="translate(4,-2)"/><path d="M81 32L44 43 32 69 M135 99L166 85 185 103 M276 69L238 79 227 100" stroke="#593129" stroke-width="3" fill="none"/><path d="M4 7H396" stroke="#f3b69a" stroke-width="6" opacity=".45"/></svg>`,
+red:`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="160" viewBox="0 0 400 160"><defs><filter id="mud"><feTurbulence type="fractalNoise" baseFrequency=".028 .05" numOctaves="5" seed="5"/></filter><linearGradient id="b" x2="0" y2="1"><stop stop-color="#b0937b"/><stop offset=".55" stop-color="#92715b"/><stop offset="1" stop-color="#604838"/></linearGradient></defs><rect width="400" height="160" rx="13" fill="url(#b)"/><rect width="400" height="160" fill="#91735c" filter="url(#mud)" opacity=".33"/><path d="M5 41Q56 19 110 39T215 43T397 33 M0 105Q82 86 153 105T300 98T405 116" fill="none" stroke="#ddbea2" opacity=".28" stroke-width="10"/><g fill="#50382b" opacity=".55"><ellipse cx="57" cy="65" rx="6" ry="3"/><ellipse cx="181" cy="122" rx="8" ry="4"/><ellipse cx="304" cy="52" rx="7" ry="3"/><ellipse cx="362" cy="103" rx="5" ry="4"/></g><path d="M0 148Q100 158 200 149T400 150" stroke="#453126" stroke-width="9" fill="none"/></svg>`
+};
+function textured(el,choice){
+  const svg=brickTextures[choice];
+  if(!svg)return;
+  el.style.setProperty("background", "url(\"data:image/svg+xml,"+encodeURIComponent(svg)+"\") center / 100% 100% no-repeat", "important");
+  el.style.setProperty("background-color", palette[choice], "important");
+}
 const params=new URLSearchParams(location.search),student=params.get("role")==="student";
 const makeRoom=()=>crypto.randomUUID?crypto.randomUUID().replaceAll("-",""):String(Date.now())+Math.random().toString(36).slice(2);
 let room=student?params.get("room"):localStorage.getItem("wallRoom");if(!student&&!room){room=makeRoom();localStorage.setItem("wallRoom",room)}
@@ -71,7 +85,7 @@ const good=/^[a-zA-Z0-9]{12,48}$/.test(room||"");const responseRef=()=>db.ref("r
 const status=s=>$(student?"studentStatus":"status").textContent=s;
 if(student){$("student").classList.remove("hidden");if(!db||!good){$("form").classList.add("hidden");status("Неверная ссылка или отсутствует подключение.");}else{
 let selected=null;const key="wallDevice:"+room;let device=localStorage.getItem(key);if(!device){device=makeRoom();localStorage.setItem(key,device)}
-document.querySelectorAll(".option").forEach(x=>x.onclick=()=>{selected=x.dataset.color;document.querySelectorAll(".option").forEach(y=>y.classList.toggle("sel",x===y))});
+document.querySelectorAll(".option").forEach(x=>{textured(x.querySelector(".sample"),x.dataset.color);x.onclick=()=>{selected=x.dataset.color;document.querySelectorAll(".option").forEach(y=>y.classList.toggle("sel",x===y))});});
 $("send").onclick=async()=>{let name=$("name").value.trim().replace(/\s+/g," ");if(name.length<2){status("Напишите ваше имя.");return}if(!selected){status("Выберите цвет кирпичика.");return} $("send").disabled=true;try{await responseRef().child(device).set({name,choice:selected,createdAt:firebase.database.ServerValue.TIMESTAMP});$("form").classList.add("hidden");$("done").classList.remove("hidden");status("Ответ сохранён.")}catch(e){status("Не удалось отправить ответ. Проверьте соединение или правила Firebase.");console.error(e)}finally{$("send").disabled=false}};
 $("edit").onclick=()=>{$("done").classList.add("hidden");$("form").classList.remove("hidden")};
 responseRef().child(device).once("value").then(s=>{let v=s.val();if(v){$("name").value=v.name;selected=v.choice;document.querySelectorAll(".option").forEach(x=>x.classList.toggle("sel",x.dataset.color===selected));$("form").classList.add("hidden");$("done").classList.remove("hidden")}}).catch(()=>{});
@@ -90,7 +104,7 @@ for(let i=0;i<slots;i++){
  if(i<rows.length){
   const v=rows[i];slot.classList.add("filled");
   const brick=document.createElement("button");brick.type="button";brick.className="brick material-"+v.choice;
-  brick.style.setProperty("--brick",palette[v.choice]);brick.style.animationDelay=(i%columns)*.055+"s";
+  brick.style.setProperty("--brick",palette[v.choice]);textured(brick,v.choice);brick.style.animationDelay=(i%columns)*.055+"s";
   const tip=document.createElement("span");tip.className="tip";tip.textContent=v.name;
   const label=document.createElement("small");label.textContent=labels[v.choice];tip.append(label);brick.append(tip);
   brick.setAttribute("aria-label",v.name+": "+labels[v.choice]);slot.append(brick);
