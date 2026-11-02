@@ -4,8 +4,8 @@
 Состав: index.html — учитель, student.html — ученики.
 Файлы используют уже существующий Firebase-проект delenie-real.
 
-1. Загрузите папку derevo в репозиторий GitHub Pages (в существующем репозитории delenie).
-2. Откройте https://sposhatov-teacher.github.io/delenie/derevo/ (после публикации).
+1. Загрузите папку derevo в репозиторий GitHub Pages (в репозитории Reflection).
+2. Откройте https://sposhatov-teacher.github.io/Reflection/derevo/ (после публикации).
 3. На учительской странице появится QR на student.html?room=...
 4. Ученик сканирует QR, вводит имя и выбирает цвет листа.
 5. Листья появляются у учителя в реальном времени.
